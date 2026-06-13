@@ -1,0 +1,46 @@
+# OS System Files
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+
+# Project Cache & Temporary Files
+.wsa4sdd_history
+.wsa4sdd-*.cache
+/tmp/
+*.tmp
+*.log
+.omc/
+.omc
+
+# IDEs and Editors
+.vscode/
+.idea/
+*.swp
+*~
+*.suo
+*.ntvsca*
+*.njsproj
+*.sln
+
+# Language specific: Go (Golang)
+/bin/
+/pkg/
+/src/
+*.out
+*.exe
+*.test
+/vendor/
+go.work
+
+# Language specific: Rust
+/target/
+**/*.rs.bk
+Cargo.lock
+
+# Docker / Credentials
+.env
+.pat_cred_*
