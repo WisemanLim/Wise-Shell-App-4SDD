@@ -6,6 +6,12 @@ WSA4SDD(Wise Shell App)는 터미널 안에서 명령어로 분산 다중 저장
 
 또한, CLI 인수 파싱과 논인터랙티브 파이프라인 대응 기능을 포함하여 `curl -fsSL ... | bash`를 통한 원격 완전 자동 배포도 동일하게 지원합니다.
 
+## 데모 (Demo)
+
+![WSA4SDD 사용 데모](wsa4sdd.gif)
+
+> 하나의 저장소(`wsa4sdd-samples`)를 `python-cli` → `node-cli` → `pb-nf` 세 브랜치로 차례로 전환하며, 각 브랜치마다 `repo → workspace → auth → bootstrap → status → dist-run` 흐름으로 배포한 뒤 `docker ps -a` 확인과 `make down`까지 시연합니다. (전체 영상: [wsa4sdd.mp4](wsa4sdd.mp4))
+
 ---
 
 ## 1. 주요 특징 (Core Features)

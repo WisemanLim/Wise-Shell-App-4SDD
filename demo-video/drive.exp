@@ -1,0 +1,91 @@
+#!/usr/bin/expect -f
+# Drives wsa4sdd.sh through repo->workspace->auth->bootstrap->status->dist-run
+# for 3 branches, then docker ps -a + make down, inside one bash PTY.
+
+set EXEC {/Users/wise/Developer/NGL(Go,Rust,...)/Wise-Shell-App-4SDD}
+set WSBASE {/Users/wise/Developer/tmp/WSA4SDD}
+set REPO {https://github.com/WisemanLim/wsa4sdd-samples.git}
+# {branch subdir}
+set flow { {python-cli p-cli} {node-cli n-cli} {pb-nf bf} }
+
+set send_slow {1 0.035}
+set stty_init "rows 34 cols 120"
+set timeout 60
+
+log_user 1
+spawn bash --norc --noprofile
+
+# Clean, path-free prompt. Built via a var so the echoed assignment
+# does not itself contain the literal prompt string (keeps expect in sync).
+send "DP=demo; PS1=\"\${DP}> \"\r"
+expect "demo> "
+send "clear\r"
+expect "demo> "
+
+foreach pair $flow {
+    set branch [lindex $pair 0]
+    set sub    [lindex $pair 1]
+    set WS     "$WSBASE/$sub"
+
+    send "cd \"$EXEC\"\r"
+    expect "demo> "
+
+    send "./wsa4sdd.sh\r"
+    expect "<command>"
+    sleep 0.5
+
+    send -s "/repo $REPO#$branch\r"
+    expect "Repositories updated"
+
+    send -s "/workspace $WS\r"
+    expect "Workspace updated"
+
+    send -s "/auth status\r"
+    expect {
+        "Current GitHub user" {}
+        "Not logged"          {}
+        timeout               {}
+    }
+
+    set timeout 900
+    send -s "/bootstrap \r"
+    expect "Bootstrap completed successfully"
+    set timeout 60
+
+    send -s "/status \r"
+    expect "Configuration Status"
+    sleep 1.2
+
+    set timeout 900
+    send -s "/dist-run \r"
+    expect "Select Make Target"
+    sleep 0.6
+    send "\r"
+    expect "Command:"
+    send "\r"
+    expect "Deploy?"
+    sleep 0.6
+    send "\r"
+    expect "Deployment completed successfully"
+    expect "demo> "
+    set timeout 120
+
+    # Step 8: inspect running containers, then tear down.
+    send "cd \"$WS\"\r"
+    expect "demo> "
+    send "docker ps -a\r"
+    expect "demo> "
+    sleep 1.2
+    set timeout 300
+    send "cd \"\$(ls -d */ | head -1)\" && make down\r"
+    expect "demo> "
+    set timeout 60
+    sleep 1.0
+}
+
+# Step 9: return to the original run location.
+send "cd \"$EXEC\"\r"
+expect "demo> "
+sleep 1.0
+send "exit\r"
+expect eof

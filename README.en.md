@@ -6,6 +6,12 @@ Improving upon rigid, wizard-like deployment scripts, WSA4SDD introduces a flexi
 
 It also supports standard CLI arguments parsing and handles non-interactive pipelines (like `curl -fsSL ... | bash`) for completely automated remote deployments.
 
+## Demo
+
+![WSA4SDD usage demo](wsa4sdd.gif)
+
+> A single repository (`wsa4sdd-samples`) is switched across three branches in turn — `python-cli` → `node-cli` → `pb-nf` — and for each branch it runs the `repo → workspace → auth → bootstrap → status → dist-run` flow, then demonstrates `docker ps -a` inspection and `make down`. (Full video: [wsa4sdd.mp4](wsa4sdd.mp4))
+
 ---
 
 ## 1. Core Features
