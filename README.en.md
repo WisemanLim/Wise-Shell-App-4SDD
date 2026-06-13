@@ -98,17 +98,33 @@ Arguments can be appended to configure the app before running, allowing you to c
 
 ```bash
 # 1) Remote TUI mode (pre-populate inputs, but launch interactive REPL)
-curl -fsSL https://raw.githubusercontent.com/WisemanLim/Wise-Shell-App-4SDD/refs/heads/main/wsa4sdd.sh \
+curl -fsSL https://raw.githubusercontent.com/WisemanLim/Wise-Shell-App-4SDD/main/wsa4sdd.sh \
   | bash -s -- -I "https://github.com/ClaroPessoas/claro-svc" -w "~/workspace"
 
 # 2) Remote non-interactive CLI mode (trigger automated deployment immediately)
-curl -fsSL https://raw.githubusercontent.com/WisemanLim/Wise-Shell-App-4SDD/refs/heads/main/wsa4sdd.sh \
+curl -fsSL https://raw.githubusercontent.com/WisemanLim/Wise-Shell-App-4SDD/main/wsa4sdd.sh \
   | bash -s -- -I "https://github.com/ClaroPessoas/claro-svc" --cli
 
 # 3) Remote non-interactive CLI dry-run (perform setup/sync but skip deployment)
-curl -fsSL https://raw.githubusercontent.com/WisemanLim/Wise-Shell-App-4SDD/refs/heads/main/wsa4sdd.sh \
+curl -fsSL https://raw.githubusercontent.com/WisemanLim/Wise-Shell-App-4SDD/main/wsa4sdd.sh \
   | bash -s -- -I "https://github.com/ClaroPessoas/claro-svc" --no-run
 ```
+
+<details>
+<summary><b>How to run from a GitHub Private Repository</b></summary>
+
+For private repositories, the `raw.githubusercontent.com` domain will return a **404 error** even when passing an `Authorization` header. You must call the GitHub REST API (`api.github.com`) and provide the raw content header:
+
+```bash
+curl -fsSL -H "Authorization: token <GITHUB_PAT>" \
+  -H "Accept: application/vnd.github.v3.raw" \
+  -L \
+  https://api.github.com/repos/WisemanLim/Wise-Shell-App-4SDD/contents/wsa4sdd.sh \
+  | bash -s -- -I "https://github.com/ClaroPessoas/claro-svc" -w "~/workspace"
+```
+
+*※ Ensure your Fine-grained PAT has **Repository Access** granted for this repo, and **Contents: Read-only** permissions configured.*
+</details>
 
 ---
 
@@ -117,9 +133,11 @@ To download the script to your local system for persistent usage:
 
 1. **Download and make executable**:
    ```bash
-   curl -fsSL -o wsa4sdd.sh https://raw.githubusercontent.com/WisemanLim/Wise-Shell-App-4SDD/refs/heads/main/wsa4sdd.sh
+   curl -fsSL -o wsa4sdd.sh https://raw.githubusercontent.com/WisemanLim/Wise-Shell-App-4SDD/main/wsa4sdd.sh
    chmod +x wsa4sdd.sh
    ```
+
+   *(For private repositories, the GitHub REST API and appropriate headers are similarly required during download.)*
 
 2. **Install to System PATH for global access (Optional)**:
    ```bash
