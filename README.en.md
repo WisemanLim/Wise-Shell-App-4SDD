@@ -2,7 +2,7 @@
 
 WSA4SDD (Wise Shell App) is a **Claude Code-style interactive deployment and distribution shell** designed to manage multi-repository service syncs and Docker Compose configurations directly in your terminal.
 
-Improving upon rigid, wizard-like deployment scripts (such as `dist-ss-tui.sh`), WSA4SDD introduces a flexible TUI REPL that lets users configure variables in any order, verify environment setups, run pre-flight checks, and trigger Docker Compose distributions safely using intuitive commands.
+Improving upon rigid, wizard-like deployment scripts, WSA4SDD introduces a flexible TUI REPL that lets users configure variables in any order, verify environment setups, run pre-flight checks, and trigger Docker Compose distributions safely using intuitive commands.
 
 It also supports standard CLI arguments parsing and handles non-interactive pipelines (like `curl -fsSL ... | bash`) for completely automated remote deployments.
 
@@ -20,12 +20,13 @@ It also supports standard CLI arguments parsing and handles non-interactive pipe
 
 ### B. Command-Driven Steps Configuration
 Each stage of the deployment pipeline is managed as a standalone shell command:
-- `/repo [repo1 repo2...]`, `/R [repo1 repo2...]`: Configure git repository lists directly, or open the Repository Manager (supporting add, delete, and arrow-key reordering) if empty.
-- `/workspace [path]`, `/W [path]`: Set target workspace folder where repos are cloned, or open the TUI selection menu (Current, Parent, Custom) if empty.
-- `/auth [gh|pat|none]`, `/A [gh|pat|none]`: Set GitHub credentials, or open the selector menu if empty.
-- `/bootstrap`, `/B`: Perform dependency check (git, gh, docker, make), clone/pull synced repositories, and generate/verify Makefiles.
-- `/status`, `/S`: Reviews current settings and checks for missing required parameters.
-- `/dist-run`, `/D`: Pre-flight configuration validation, runs optional pre-run hooks, and launches the Make targets deployment selector.
+- `/repo [url[#branch] ...]`, `/R …`: Register **one or more** repos. Pass **several at once, space- or comma-separated**, and use `<url>#<branch>` to **pin a branch** (cloned/pulled on that branch). Empty opens the Repository Manager (add, delete, reorder). URLs are validated (`https://`, `git@host:owner/repo`, `ssh://`, local path; optional `#branch`); if **none are registered or all are invalid, it is `[NOT SET]`**.
+- `/workspace [path]`, `/W [path]`: Workspace folder. **`[NOT SET]` until run**; when run with no arg, pick one of **Current / Parent / Custom path** from the TUI menu.
+- `/auth [status|switch|login|pat]`, `/A …`: GitHub auth. **`[NOT SET]` until run**; the menu offers **4 actions** — **gh login status** (show current user) / **gh auth switch** / **gh auth login** / **Register PAT**.
+- `/bootstrap`, `/B`: Runs **only when repo, workspace, and auth are all set**. ① system environment check module (detect OS + report git/gh/docker/make, no install) ② pre-install module (install missing deps) → sync repos → generate Makefile. If any prerequisite is `[NOT SET]`, it stays `[PENDING]` and refuses, listing the missing items. **If any step (repo sync, ops resolution, Makefile generation, …) fails, it aborts without reaching `[DONE]` and stays `[PENDING]`.** Deployment assets in the ops repo are prepared as follows — (1) if a Makefile exists, use it; (2) if only docker-compose exists, generate a Makefile from it; (3) if neither exists, detect direct build/run apps (Python `hello.py`/…, Node `package.json`/entry) — **finds every app, none omitted** (e.g. `apps/python-cli`, `node-cli`, `python-backend`, `node-frontend`), generates **a Dockerfile + one compose service per app** and a Makefile with overall `up`/`down` plus per-app `up-<name>` targets (notifies you, then `/dist-run` is available); if none found, **report that `/dist-run` is unavailable and exit**. (Python apps use the **manifest dir** — `pyproject.toml`/`requirements.txt`/`setup.py` — as the build context so dependencies install even when the entry is nested like `app/main.py`; FastAPI/uvicorn apps get a `uvicorn <module>:<app>` CMD plus a published port.) **With multiple repos registered, every repo is scanned** (not just the ops repo); the generated compose/Makefile live in the ops repo and reference sibling-repo apps via `../<repo>/...` build contexts (service names are repo-prefixed to avoid clashes). It also classifies each service's **role (frontend/backend/database/cli)** and writes a **wired** compose — frontends get `BACKEND_URL`+`depends_on`+port, backends get a port (+`DATABASE_URL`+`depends_on` when a database exists), CLIs get no ports. Host ports only increment on collision (a single backend stays 8000).
+- `/status`, `/S`: Shows current settings, `[NOT SET]` items, bootstrap state (`[PENDING]`/`[DONE]`), and the active theme.
+- `/theme`, `/T [name]`: Switch the Claude-CLI-style **color theme** (6 presets). With no arg, opens a selector + color-swatch preview. On **first run** it asks once and persists the choice to the cache.
+- `/dist-run`, `/D`: **Does not auto-bootstrap.** If bootstrap is `[PENDING]`, it guides you to run `/bootstrap`, prints the `[NOT SET]` items besides bootstrap, and **exits without executing anything**. Only when `[DONE]` does it launch the Make target selector.
 - `/help`, `/H`: Displays the help instructions and command manual.
 - `/exit`, `/E`: Exits the session and completely purges saved caches.
 - `! <command>`: Executes a local shell command (e.g. `! pwd`, `! ls -la`) immediately within the interactive REPL and displays the output.
@@ -48,19 +49,20 @@ Each stage of the deployment pipeline is managed as a standalone shell command:
 When starting `wsa4sdd.sh` interactively, the terminal displays the welcome header:
 
 ```
-  WSA4SDD App (v1.0.0) — Service Deployment and Distribution Shell
+  WSA4SDD App (v1.1.0) — Service Deployment and Distribution Shell
   Lives in your terminal, manages git repos, and deploys docker-compose.
   ─────────────────────────────────────────────────────────────────────────────
   Commands:
-    /repo, /R [repo1 repo2...]    Configure repository URLs to deploy (or open manager if empty)
-    /workspace, /W [path]       Configure target workspace directory path (or open menu if empty)
-    /auth, /A [gh|pat|none]     Configure GitHub credentials (or open menu if empty)
-    /bootstrap, /B              Verify dependencies and sync git repositories
-    /status, /S                 Show current configuration status
-    /dist-run, /D               Verify configurations and run make deployment
-    /help, /H                   Show this help message
-    /exit, /E                   Exit wsa4sdd shell and clear cache
-    ! <command>                 Execute a shell command and display the output
+    /repo, /R [url[#branch] ...]         Register 1+ repos (space/comma sep, optional #branch)
+    /workspace, /W [path]                Current / Parent / Custom ([NOT SET] until run)
+    /auth, /A [status|switch|login|pat]  gh status/switch/login or PAT ([NOT SET] until run)
+    /bootstrap, /B                       System check + pre-install + sync (needs all set)
+    /status, /S                          Show config + [PENDING]/[DONE] + theme
+    /theme, /T [name]                    Switch color theme (6 presets; menu if empty)
+    /dist-run, /D                        Run deploy ([PENDING] -> guide + abort, no auto-bootstrap)
+    /help, /H                            Show this help message
+    /exit, /E                            Exit wsa4sdd shell and clear cache
+    ! <command>                          Execute a shell command and display the output
   ─────────────────────────────────────────────────────────────────────────────
 
 >    
@@ -69,24 +71,51 @@ When starting `wsa4sdd.sh` interactively, the terminal displays the welcome head
 ### Detailed Commands Guide
 
 #### 1. Repository Configuration (`/repo`, `/R`)
-- **CLI direct**: Overwrite target repos by passing arguments: `/repo <url1> <url2>`.
-- **TUI interactive**: Call `/repo` with no arguments to manage items interactively.
-  - Use `Add Repository` to append and `Delete` to remove.
-  - Select `Change Order` to select an item and use arrow keys to swap its index position.
+- **CLI direct**: `/repo <url1> <url2#branch> …` — one or more, space/comma separated. Invalid URLs rejected with a warning.
+- **TUI interactive**: `/repo` with no args opens the manager. `Add Repository` accepts **multiple URLs on one line** (space/comma); `Delete`, `Change Order`.
+- **Branch**: `<url>#<branch>` (e.g. `https://github.com/o/r.git#dev`, `git@host:o/r.git#release/1.0`) → clone (`-b`) / pull (`checkout` + `pull origin <branch>`) on that branch. Omit for default/current branch.
+- **Valid formats**: `https://…/…`, `git@host:owner/repo`, `ssh://…`, local path (optional `#branch`).
+- **State**: with zero valid repos, `/status` shows `[NOT SET]`.
 
 #### 2. Target Workspace (`/workspace`, `/W`)
+- **`[NOT SET]` until run** — running it is what defines the value.
 - **CLI direct**: `/workspace /path/to/dir`
-- **TUI interactive**: Call `/workspace` to select between `Current dir (./)`, `Parent dir (../)`, and `Custom path...`.
+- **TUI interactive**: pick one of **① Current dir ② Parent dir ③ Custom path…**.
 
 #### 3. Authentication Protocol (`/auth`, `/A`)
-- **CLI direct**: `/auth <gh|pat|none>`
-- **TUI interactive**: Opens the selector menu. Choosing `pat` prompts for your GitHub Username and Token. (Tokens are written to an encrypted temporary helper file and removed automatically when the script exits).
+- **`[NOT SET]` until run** — running it offers **4 actions**:
+  1. **gh login status** — `gh auth status`; shows and records the current GitHub user.
+  2. **gh auth switch** — switch the active account.
+  3. **gh auth login** — new GitHub login.
+  4. **Register PAT** — Username (optional) + Personal Access Token, stored in a 0600 temp helper file and auto-removed on exit.
+- **CLI direct**: `/auth status|switch|login|pat` (`gh`/`none` also accepted for scripting).
+- `/status` shows the auth method plus the detected current GitHub username.
 
 #### 4. Run Deployment (`/dist-run`, `/D`)
-- Validates the configurations. If inputs are missing, it guides the user with suggestion commands.
-- Triggers `/bootstrap` automatically if repositories haven't been synchronized yet.
-- Parses the parsed Makefile targets (such as `up-*`) and shows them as a visual arrow-key menu.
-- Runs user-defined pre-run commands and triggers `make <target>`. On success, cache is wiped, and the script exits.
+- **Will not run unless bootstrap is `[DONE]`.** If `[PENDING]`, it guides you to run `/bootstrap`, prints the `[NOT SET]` items (Repos/Workspace/Auth) besides bootstrap, and **exits without executing anything** (no auto-bootstrap).
+- When `[DONE]`, it collects Makefile targets (such as `up-*`) into a dynamic arrow-key menu.
+- Runs optional pre-run commands, triggers `make <target>`; on success the cache is wiped and the script exits.
+
+> **State model**: settings (repo·workspace·auth) are `[NOT SET]` until filled. Bootstrap runs only when all
+> three are set and becomes `[DONE]`; otherwise `[PENDING]`. Changing any setting invalidates `[DONE]` back to `[PENDING]`.
+
+#### 5. Color Theme (`/theme`, `/T`)
+
+A Claude-CLI-style color theme system. On **first run** the tool asks for a theme once and persists it to the cache, so subsequent runs don't prompt again.
+
+| Theme | Description |
+|---|---|
+| `dark` | Default for dark backgrounds |
+| `light` | For light backgrounds (dark text) |
+| `dark-daltonized` | Colorblind-friendly (avoids green/red confusion — success=blue, error=orange), dark bg |
+| `light-daltonized` | Colorblind-friendly, light bg |
+| `dark-ansi` | 16-color ANSI only (no 256/truecolor), dark bg |
+| `light-ansi` | 16-color ANSI only, light bg |
+
+- **CLI direct**: `/theme dark-daltonized` switches immediately.
+- **TUI interactive**: `/theme` opens a menu (current theme preselected) and prints a color swatch (✓/!/✗/▶) preview after selection.
+- The choice is stored in a **dedicated persistent cache** `/tmp/.wsa4sdd-theme-${UID}.cache` and shown in `/status`.
+- Unless you re-set it via `/theme`,`/T`, the previous cached value is reused. **The theme cache is NOT deleted when the session cache is cleared** (`/exit`, double Ctrl+C, successful deploy).
 
 ---
 
@@ -108,7 +137,22 @@ curl -fsSL https://raw.githubusercontent.com/WisemanLim/Wise-Shell-App-4SDD/main
 # 3) Remote non-interactive CLI dry-run (perform setup/sync but skip deployment)
 curl -fsSL https://raw.githubusercontent.com/WisemanLim/Wise-Shell-App-4SDD/main/wsa4sdd.sh \
   | bash -s -- -I "https://github.com/ClaroPessoas/claro-svc" --no-run
+
+# 4) One-shot default environment (--default-env): workspace=cwd, ops=first repo, auth=pat
+curl -fsSL https://raw.githubusercontent.com/WisemanLim/Wise-Shell-App-4SDD/main/wsa4sdd.sh \
+  | bash -s -- -I "https://github.com/ClaroPessoas/claro-svc" -a "<PAT_TOKEN>" --default-env
 ```
+
+#### `--default-env` flag
+
+A non-interactive mode that composes a default environment in one line for remote/automation use.
+
+- **`-a, --auth <value>`**: CLI auth. A `gh`/`pat`/`none` keyword sets the method; any other string is treated as a **PAT token** (method=pat). Both `-a` and `--auth` spellings work.
+- **`--default-env`**:
+  1. **`-I/--input` (repo) is required** — error + exit if missing.
+  2. **workspace = current dir (PWD)**, **ops repo = first repo's name** (auto-set).
+  3. **`-a/--auth` is required**, default method `pat`, **a token value must be supplied to run** — error + exit if missing (or if only bare `pat` is given without a token).
+- ⚠️ `-a <token>` exposes the token in process args (ps/history). Intended for automation/demo; mask CI secrets in production.
 
 <details>
 <summary><b>How to run from a GitHub Private Repository</b></summary>
